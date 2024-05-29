@@ -5,16 +5,27 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
+	"github.com/lunagic/environment-go/environment"
 	"github.com/lunagic/quiet-hacker-news/internal/hackernews"
 	"github.com/lunagic/quiet-hacker-news/internal/qhn"
 )
 
+type Config struct {
+	Port int `env:"PORT"`
+}
+
 func main() {
 	ctx := context.Background()
+
+	config := Config{
+		Port: 8080,
+	}
+
+	if err := environment.New().Decode(&config); err != nil {
+		log.Fatalf("Error reading the environment: %s", err.Error())
+	}
 
 	s, err := qhn.New(
 		hackernews.New(),
@@ -30,7 +41,7 @@ func main() {
 	})
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf("0.0.0.0:%d", getPortNumber()),
+		Addr:    fmt.Sprintf("0.0.0.0:%d", config.Port),
 		Handler: s,
 	}
 
@@ -46,20 +57,4 @@ func keepRunning(frequency time.Duration, action func()) {
 	for range ticker.C {
 		action()
 	}
-}
-
-func getPortNumber() int {
-	defaultPort := 8080
-
-	portString := os.Getenv("PORT")
-	if portString == "" {
-		return defaultPort
-	}
-
-	portInt, err := strconv.Atoi(portString)
-	if err != nil {
-		return defaultPort
-	}
-
-	return portInt
 }
